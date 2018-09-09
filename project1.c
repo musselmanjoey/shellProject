@@ -12,5 +12,6 @@ int main( int argc, char *argv[] )
                 printf("%s@%s :: %s ->\n", myUSER, myMACHINE, myPWD);
         else
                 printf("get env returned null");
+	//this was added
 
         }
