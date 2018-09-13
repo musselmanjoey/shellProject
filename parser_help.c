@@ -13,18 +13,28 @@
 char** addToken(char** instr, char* tok, int numTokens);
 void printTokens(char** instr, int numTokens);
  
-int main() {
-    char token[256];      	// holds instruction token
-    char ** bucket;			// array that holds all instruction tokens
-	char temp[256];			// used to split instruction tokens containing special characters
+int main() 
+	{
+    	char token[256];      	// holds instruction token
+    	char ** bucket;			// array that holds all instruction tokens
+    	char temp[256];			// used to split instruction tokens containing special characters
+	char *myUSER = getenv("USER");  //declaring variables need for comandline
+	char *myPWD = getenv("PWD");
+      	char *myMACHINE = getenv("MACHINE");
 	
-    while (1) {
-		printf("Please enter an instruction:");
+    	while (1) 
+		{
+        	//check to make sure they all got valid data
+        	if (myUSER != NULL && myPWD != NULL && myMACHINE != NULL)
+                	printf("%s@%s :: %s ->", myUSER, myMACHINE, myPWD);
+       		else
+                	printf("get env returned null");
 
-        int numI = 0;                // number of tokens in an instruction
+        	int numI = 0;                // number of tokens in an instruction
 		
-        do {                            // loop reads character sequences separated by whitespace
-            scanf( "%s", token);
+        	do 
+			{                            // loop reads character sequences separated by whitespace
+            		scanf( "%s", token);
 			
 			int i;
 			int start;
@@ -32,17 +42,16 @@ int main() {
 			start = 0;
 			
 			for (i = 0; i < strlen(token); i++)
-			{
-				if (token[i] == '|' || token[i] == '>' || token[i] == '<' || token[i] == '&') 
 				{
-					if (i-start > 0)
+				if (token[i] == '|' || token[i] == '>' || token[i] == '<' || token[i] == '&') 
 					{
+					if (i-start > 0)
+						{
 						memcpy(temp, token + start, i - start);
 						temp[i-start] = '\0';
 						bucket = addToken(bucket, temp, numI);
-						numI++;
-						
-					}
+						numI++;						
+						}
 					
 					char specialChar[2];
 					specialChar[0] = token[i];
@@ -52,27 +61,27 @@ int main() {
 					numI++;
 					
 					start = i + 1;
+					}
 				}
-			}
 			if (start < strlen(token))
-			{
+				{
 				memcpy(temp, token + start, strlen(token) - start);
 				temp[i-start] = '\0';
 				bucket = addToken(bucket, temp, numI);
 				numI++;
 				
-			}
+				}
 		
-        } while ('\n' != getchar());    //until end of line is reached
+        		} while ('\n' != getchar());    //until end of line is reached
 		
 		printTokens(bucket, numI);
 		
-    }  //until "exit" is read in
+    		}  //until "exit" is read in
 	free(bucket);	//free dynamic memory
-    printf("Exiting...\n");
+	printf("Exiting...\n");
 
-    return 0;
-}
+	return 0;
+	}
 
 //reallocates instruction array to hold another token,
 //returns new pointer to instruction array
