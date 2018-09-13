@@ -18,6 +18,8 @@ int main( int argc, char *argv[] )
         char *myMACHINE;
 	//this was added
 	
+	//This is a test line of code
+	
 	//The following code is the parser help code from canvas
 	char token[256];	//holds instruction token
 	char ** bucket;		//array that holds all instruction tokens
