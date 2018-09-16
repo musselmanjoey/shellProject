@@ -9,6 +9,10 @@
 char** addToken(char** instr, char* tok, int numTokens);
 void printTokens(char** instr, int numTokens);
 void my_execute(char **cmd);
+char **resolve_paths(char **args);
+char *expand_path(char *path, int cmd_p);
+int is_command(char **args, int i);
+
 
 int main( int argc, char *argv[] )
         {
@@ -16,23 +20,26 @@ int main( int argc, char *argv[] )
         char *myUSER;  //declaring variables need for comandline
         char *myPWD;
         char *myMACHINE;
-	//this was added
+	char *myHOME;
+	char *myROOT;
+
+	//Setting home directory
+	myHOME = getenv("HOME");
+	//myROOT = getenv("PWD");
 	
 	
 	//The following code is the parser help code from canvas
 	char token[256];	//holds instruction token
 	char ** bucket;		//array that holds all instruction tokens
 	char temp[256];		//used to split tokens containing special characters
-	int exit;
-	exit = 0;		//used to track if program should end
 
-	while(exit == 0){
+	while(7){
 		myUSER = getenv("USER");  //ensure everthing is right before running
         	myPWD = getenv("PWD");
         	myMACHINE = getenv("MACHINE");
         	//check to make sure they all got valid data
         	if (myUSER != NULL && myPWD != NULL && myMACHINE != NULL)
-                	printf("%s@%s :: %s ->\n", myUSER, myMACHINE, myPWD);
+                	printf("%s@%s :: %s -> ", myUSER, myMACHINE, myPWD);
         	else
                 	printf("get env returned null");
 
@@ -60,9 +67,6 @@ int main( int argc, char *argv[] )
 					numI++;
 
 					start = i + 1;
-				}else if(token[i] == 'e' && token[i+1] == 'x' && token[i+2] == 'i' && token[i+3] == 't'){
-					printf("You made it!\n");
-					exit = 1;
 				}
 			}
 			if(start < strlen(token)){
@@ -74,9 +78,12 @@ int main( int argc, char *argv[] )
 		}while('\n' != getchar());	//until end of line is reached
 		
 		printTokens(bucket, numI);
+		bucket = resolve_paths(bucket);
+		printTokens(bucket, numI);
+		//Resolve paths and execute here
+		
 	}	//until "exit" is read in
 	free(bucket);		//free dynamic array
-	printf("Exiting...''\n");
 
 	return 777;	//Jackpot bb
 }
@@ -134,3 +141,125 @@ void my_execute(char **cmd)
 		waitpid(pid, &status, 0);
 		}
 	}
+
+char **resolve_paths(char **args){
+	int i;
+	for(i = 0; args[i] != NULL; i++){
+		args[i] = expand_path(args[i], is_command(args, i));
+	}
+
+	return args;
+}
+
+int is_command(char **args, int i){
+	//returns 0 for argument, 1 for external command, 2 for cd, 3 for other built-in commands
+	if(i != 0){
+		return 0;
+	}
+	else if(strcmp(args[i], "cd") == 0){
+		return 2;
+	}
+	else if(strcmp(args[i], "exit") == 0 || strcmp(args[i], "echo") == 0 || strcmp(args[i], "io") == 0){
+		return 3;
+	}
+	else{
+		return 1;
+	}
+}
+
+char *expand_path(char *path, int cmd_p){
+	//returns expanded argument, does nothing in most cases (determined by is_command)
+	char *userPath;
+	char *USER;
+	char *currentPath;
+	char *homePath;
+	char *newPath;
+	homePath = getenv("HOME");
+	USER = getenv("USER");
+	userPath = "/user/";
+
+	int argLen = strlen(path);
+
+	char *path1;
+	char *path2;
+	char *path3;
+	char *path4;
+	char *path5;
+
+	switch(cmd_p){
+		case 0:
+			//arguments never expand, do nothing
+			break;
+		case 1:
+			//external commands must be expanded
+			userPath = malloc(strlen(userPath) + strlen(USER) + 1);
+			userPath = strcat(userPath, USER);
+			userPath = malloc(5 + 1);
+			userPath = strcat(userPath, "/bin/");
+
+			homePath = malloc(strlen(homePath) + 9 + 1);
+			homePath = strcat(homePath, "/bin/git/");
+
+			path1 = malloc(strlen(homePath) + argLen + 1);
+			path2 = malloc(25 + argLen + 1);
+			path3 = malloc(5 + argLen + 1);
+			path4 = malloc(9 + argLen + 1);
+			path5 = malloc(strlen(userPath) + argLen + 1);
+			strcpy(path1, homePath);
+			path1 = strcat(path1, path);
+			strcpy(path2, "/usr/local/bin/");
+			path2 = strcat(path2, path);
+			strcpy(path3, "/bin/");
+			path3 = strcat(path3, path);
+			strcpy(path4, "/usr/bin/");
+			path4 = strcat(path4, path);
+			strcpy(path5, userPath);
+			path5 = strcat(path5, path);
+			
+
+			if(access(path1, F_OK) == 0){
+				newPath = malloc(strlen(path1) + 1);
+				strcpy(newPath, path1);
+				return newPath;
+			}
+			else if(access(path2, F_OK) == 0){
+				newPath = malloc(strlen(path2) + 1);
+				strcpy(newPath, path2);
+				return newPath;
+			}
+			else if(access(path3, F_OK) == 0){
+				newPath = malloc(strlen(path3) + 1);
+				strcpy(newPath, path3);
+				return newPath;
+			}
+			else if(access(path4, F_OK) == 0){
+				newPath = malloc(strlen(path4) + 1);
+				strcpy(newPath, path4);
+				return newPath;
+			}
+			else if(access(path5, F_OK) == 0){
+				newPath = malloc(strlen(path5) + 1);
+				strcpy(newPath, path5);
+				return newPath;
+			}
+			else{
+				printf("ERROR: %s is not a valid command.\n", path);
+				return path;
+			}
+			break;
+		case 2:
+			//cd is the only exception to the rule with built-in commands
+			currentPath = getenv("PWD");
+			printf("You typed cd!\n");
+				return path;
+			
+			break;
+		case 3:
+			if(strcmp(path, "exit") == 0){
+				printf("Exiting...\n");
+				exit(777);
+			}
+			break;
+	}
+}
+
