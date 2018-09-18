@@ -12,17 +12,24 @@ void my_execute(char **cmd);
 char **resolve_paths(char **args);
 char *expand_path(char *path, int cmd_p);
 int is_command(char **args, int i);
+int expand(char* var);
+char* expand_arg(char* str);
 
+char *myUSER;
+char *myPWD;
+char *myMACHINE;
+char *myHOME;
+char *myROOT;
 
 int main( int argc, char *argv[] )
         {
-
+/*
         char *myUSER;  //declaring variables need for comandline
         char *myPWD;
         char *myMACHINE;
 	char *myHOME;
 	char *myROOT;
-
+*/
 	//Setting home directory
 	myHOME = getenv("HOME");
 	//myROOT = getenv("PWD");
@@ -79,6 +86,7 @@ int main( int argc, char *argv[] )
 		
 		printTokens(bucket, numI);
 		bucket = resolve_paths(bucket);
+		my_execute(bucket);
 		printTokens(bucket, numI);
 		//Resolve paths and execute here
 		
@@ -121,6 +129,16 @@ void printTokens(char** instr, int numTokens){
 
 void my_execute(char **cmd) 
 	{
+	printf("%s, %s\n", cmd[0], cmd[1]);
+
+	//cd function goes here, since there's no need to child when changing dirs
+	if(strcmp(cmd[0], "cd") == 0){
+		printf("Check verified!\n");
+		strcpy(myPWD, cmd[1]);
+		chdir(myPWD);
+		
+	}else{
+
 	int status;
 	pid_t pid = fork();
 	if (pid == -1) 
@@ -141,6 +159,11 @@ void my_execute(char **cmd)
 		waitpid(pid, &status, 0);
 		}
 	}
+
+	}
+
+
+
 
 char **resolve_paths(char **args){
 	int i;
@@ -188,7 +211,15 @@ char *expand_path(char *path, int cmd_p){
 
 	switch(cmd_p){
 		case 0:
-			//arguments never expand, do nothing
+			//arguments expand if they are a file
+			//are f
+			if(expand(path) == 1)
+                		strcpy(path,expand_arg(path));
+			else
+                		printf("does not need to be expanded\n");
+
+			return path;
+			
 			break;
 		case 1:
 			//external commands must be expanded
@@ -249,9 +280,7 @@ char *expand_path(char *path, int cmd_p){
 			break;
 		case 2:
 			//cd is the only exception to the rule with built-in commands
-			currentPath = getenv("PWD");
-			printf("You typed cd!\n");
-				return path;
+			return path;
 			
 			break;
 		case 3:
@@ -263,3 +292,67 @@ char *expand_path(char *path, int cmd_p){
 	}
 }
 
+int expand(char* var)
+        {
+        if(var[0] == '/' || var[0] == '~' || var[0] == '.')
+                return 1;
+        else
+                return 0;
+        }
+
+char* expand_arg(char* str)
+        {
+        char* strm1 = str + 1;          //strings that are missing first and second characte$
+        char* strm2 = str + 2;
+        char *thePWD = getenv("PWD");
+        char *myHOME = getenv("HOME");
+        //getting path to directory above
+        int end = strlen(thePWD)-1;      //finding end of myPWD used for getting .. later
+        int constend = end;
+        char check;
+        int howfar = 0;
+
+        while (check != '/')            //finds end of myPWD (strlen was giving me the wrong$
+                {
+                check = thePWD[end];
+                end--;
+                howfar++;
+                }
+        int where = constend-howfar+1;  //error checking
+        if(str[0] == '/'){}
+                //this is a root
+        else if(str[0] == '.' && str[1] != '.')
+                {
+                //relative to current
+                strcat(thePWD,strm1);
+                strcpy(str,thePWD);
+                }
+        else if(str[0] == '.' && str[1] == '.')
+                {
+                //relative to one behind
+                char temp[255];
+                int i;
+                for( i = 0; i < where; i++)//copies myPWD without last directory
+                        {
+                        temp[i] = thePWD[i];
+                        }
+		temp[where] = '\0';
+                strcat(temp,strm2);
+                strcpy(str,temp);
+                }
+        else if(str[0] == '~')
+                {
+                //relative to home
+                strcat(myHOME,strm1);
+                strcpy(str,myHOME);
+                }
+        else
+                {
+                //relative to current
+                strcat(thePWD,"/");
+                strcat(thePWD,str);
+                strcpy(str,thePWD);
+                }
+        printf("%s\n", str);
+        return str;
+        }
