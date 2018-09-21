@@ -15,18 +15,19 @@ char *myMACHINE;
 char *myHOME;
 char *myROOT;
 
-char **res_loop(char **args,int numtoks);
-char *PATHres(char *oldPath);
-char *absoluteRes(char *oldPath);
-char **strArr(char *path, char **strarr, char del);
-void freestrArr(char **strarr);
-int exists(char* path);
-char* addHOME(char* oldPath);
-void remFirst(char* old);
-char* catPaths(char* first, char* second);
+char **res_loop(char **args,int numtoks);//loop that picks what to resolve and how
+char *PATHres(char *oldPath);//resolves variables that start with $PATH
+char *absoluteRes(char *oldPath);//returns absolute path of input
+char **strArr(char *path, char **strarr, char del);//allocates a 2d array that is null terminated
+void freestrArr(char **strarr);//frees 2d array
+int exists(char* path);//returns 1 if file exists 0 if it doesnt
+char* addHOME(char* oldPath);//adds home to the front of the path
+void remFirst(char* old);//removes first character
+char* catPaths(char* first, char* second);//concatinates two dynamic allocated paths and stores it in the first
 char* getdir(char* dir);//passes in . and returns directory
 char* getparent(char* dir);//passes in .. and returns directory
-int strarrlength(char** strarr);
+int strarrlength(char** strarr);//returns number of strings in a 2d array
+void my_execute(char **cmd); //executes 
 
 
 int main( int argc, char *argv[] )
@@ -87,9 +88,26 @@ int main( int argc, char *argv[] )
 		//Resolve paths and execute here
 		printTokens(bucket, numI);
 		res_loop(bucket, numI);
+		if(strcmp(bucket[0],"exit")==0)
+			{
+			printf("Exiting...\n");
+			int i;
+			for(i = 0; i < numI; i++)
+				free(bucket[i]);
+			free(bucket);
+			return 0;
+			}
+
+		else if(strcmp(bucket[0],"cd")==0)
+			{
+			chdir(bucket[1]);
+			}
+		else
+			my_execute(bucket); 
+
 		printTokens(bucket, numI);		
 	}	//until "exit" is read in
-//	freestrArr(bucket);
+
 	return 777;	//Jackpot bb
 }
 
@@ -174,7 +192,6 @@ char *absoluteRes(char *oldPath)
 		{
 		oldPath= addHOME(oldPath);
 		homeflag =1;
-		printf("new adjusted home path is %s\n",oldPath);
 		}
 	if(homeflag ==0)
 		{
@@ -183,7 +200,7 @@ char *absoluteRes(char *oldPath)
 		int i =0;
 		while(pathArr[i] != NULL)		//goes to each string fixes if . or ..
 			{	
-			printf("%s is getting checked for . and ..",oldPath);
+//			printf("%s is getting checked for . and ..",oldPath);
 			if(strcmp(pathArr[i],".") ==0)
 				{
 				pathArr[i] = getdir(pathArr[i]); 
@@ -193,7 +210,6 @@ char *absoluteRes(char *oldPath)
 				pathArr[i] = getparent(pathArr[i]); 
 			i++;
 			}
-		printf("out of absolute change while loop\n");
 		i= 0;
 		int total = 0;
 		while(pathArr[i] != NULL)
@@ -201,7 +217,7 @@ char *absoluteRes(char *oldPath)
 			total = total + strlen(pathArr[i]);
 			i++;
 			}
-		printf("total size to allocate is %d\n",total);
+//		printf("total size to allocate is %d\n",total);
 		temp = (char*)calloc(total +1,sizeof(char));
 		i = 0;
 		strcpy(temp,pathArr[i]);
@@ -214,7 +230,7 @@ char *absoluteRes(char *oldPath)
 			i++;
 			}
 		temp[total+1] = '\0';
-		printf("new abs path is %s\n",temp);
+//		printf("new abs path is %s\n",temp);
 		freestrArr(pathArr);
 		free(oldPath);
 	
@@ -235,12 +251,12 @@ char **strArr(char *path, char** strarr, char del)
 		i++;
 		}
 	count++;//last one for null character
-	printf("count is %d\n",count);
+//	printf("count is %d\n",count);
 	strarr = (char**)calloc(count+1,sizeof(char*));//count plus 1 to allocate for null pointer in last string pointer
 
 	for(i =0;i < count;i++)	//allocating space for each string
 		strarr[i] = (char*)calloc(strlen(path),sizeof(char));//max size will be path
-	printf("%d strings allocated\n",count);
+//	printf("%d strings allocated\n",count);
 	strarr[i]= NULL;	//last string points to null
 	int j = 0; //which string to put info in
 	int k = 0; //how far in string you are
@@ -260,9 +276,9 @@ char **strArr(char *path, char** strarr, char del)
 		}
 	strarr[j][k] = '\0';//final null character
 	//array is populated
-	printf("array values for %s are:\n",path);
-	for(i = 0;i<count;i++)
-		printf("%s ",strarr[i]);
+//	printf("array values for %s are:\n",path);
+//	for(i = 0;i<count;i++)
+//		printf("%s ",strarr[i]);
 
 	return strarr;		
 	}
@@ -289,8 +305,6 @@ int exists(char* path)
 		{
 		return 0;
 		}
-
-
 	}
 
 char* addHOME(char* oldPath)
@@ -376,4 +390,27 @@ int strarrlength(char** strarr)
 	while(strarr[i] != NULL)
 		i++;
 	return i;
+	}
+
+void my_execute(char **cmd) 
+	{
+	int status;
+	pid_t pid = fork();
+	if (pid == -1) 
+		{
+		//Error
+		exit(1);
+		}
+	else if (pid == 0) 
+		{
+		//Child
+		execv(cmd[0], cmd);
+		printf("Problem executing %s\n", cmd[0]);
+		exit(1);
+		}
+	else 
+		{
+		//Parent
+		waitpid(pid, &status, 0);
+		}
 	}
