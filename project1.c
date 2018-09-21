@@ -8,23 +8,29 @@
 
 char** addToken(char** instr, char* tok, int numTokens);
 void printTokens(char** instr, int numTokens);
-void my_execute(char **cmd);
-char **resolve_paths(char **args);
-char *expand_path(char *path, int cmd_p);
-int is_command(char **args, int i);
-int expand(char* var);
-char* expand_arg(char* str);
+
+char *myUSER;
+char *myPWD;
+char *myMACHINE;
+char *myHOME;
+char *myROOT;
+
+char **res_loop(char **args,int numtoks);
+char *PATHres(char *oldPath);
+char *absoluteRes(char *oldPath);
+char **strArr(char *path, char **strarr, char del);
+void freestrArr(char **strarr);
+int exists(char* path);
+char* addHOME(char* oldPath);
+void remFirst(char* old);
+char* catPaths(char* first, char* second);
+char* getdir(char* dir);//passes in . and returns directory
+char* getparent(char* dir);//passes in .. and returns directory
+int strarrlength(char** strarr);
 
 
 int main( int argc, char *argv[] )
         {
-
-        char *myUSER;  //declaring variables need for comandline
-        char *myPWD;
-        char *myMACHINE;
-	char *myHOME;
-	char *myROOT;
-
 	//Setting home directory
 	myHOME = getenv("HOME");
 	//myROOT = getenv("PWD");
@@ -78,15 +84,12 @@ int main( int argc, char *argv[] )
 				numI++;
 			}
 		}while('\n' != getchar());	//until end of line is reached
-		
-		printTokens(bucket, numI);
-		bucket = resolve_paths(bucket);
-		printTokens(bucket, numI);
 		//Resolve paths and execute here
-		
+		printTokens(bucket, numI);
+		res_loop(bucket, numI);
+		printTokens(bucket, numI);		
 	}	//until "exit" is read in
-	free(bucket);		//free dynamic array
-
+//	freestrArr(bucket);
 	return 777;	//Jackpot bb
 }
 
@@ -121,220 +124,256 @@ void printTokens(char** instr, int numTokens){
 		printf("#%s#\n", instr[i]);
 }
 
-void my_execute(char **cmd) 
+char** res_loop(char **args, int numtokes)
 	{
-	int status;
-	pid_t pid = fork();
-	if (pid == -1) 
+	if(strcmp(args[0],"exit") == 0 || strcmp(args[0],"echo") == 0 || strcmp(args[0],"io") == 0)
+		{}//no resolution
+	else if(strcmp(args[0],"cd") == 0)
 		{
-		//Error	
-		exit(1);
-		}
-	else if (pid == 0) 
-		{
-		//Child
-		execv(cmd[0], cmd);
-		printf("Problem executing %s\n", cmd[0]);
-		exit(1);
+		printf("its a cd\n");
+		args[1]=absoluteRes(args[1]);
 		}
 	else 
 		{
-		//Parent
-		waitpid(pid, &status, 0);
+		//its another command try $PATH resolution
+		args[0] = PATHres(args[0]);
 		}
 	}
 
-
-
-
-char **resolve_paths(char **args){
-	int i;
-	for(i = 0; args[i] != NULL; i++){
-		args[i] = expand_path(args[i], is_command(args, i));
+char* PATHres(char* oldPath)
+	{
+	//takes adds each element of PATH to oldPath and checks if it is a valid location	
+	char** PATHStr;
+	char* temp;
+	PATHStr = strArr(getenv("PATH"),PATHStr,':');
+	int i=0;
+	while(PATHStr[i] != NULL)
+		{
+		PATHStr[i]= absoluteRes(PATHStr[i]);
+		PATHStr[i]= catPaths(PATHStr[i],"/");		
+		PATHStr[i]= catPaths(PATHStr[i],oldPath);		
+		if(exists(PATHStr[i]) ==1)
+			{
+			temp = PATHStr[i];
+			PATHStr[i]=NULL;	
+			freestrArr(PATHStr);
+			return temp;
+			}
+		i++;
+		}
+	return oldPath;
 	}
 
-	return args;
-}
 
-int is_command(char **args, int i){
-	//returns 0 for argument, 1 for external command, 2 for cd, 3 for other built-in commands
-	if(i != 0){
-		return 0;
+char *absoluteRes(char *oldPath)
+	{
+	//puts path into a array goes to each string  
+	char *temp;
+	int homeflag =0;
+	if(oldPath[0] == '~')	//if starts with home resolve
+		{
+		oldPath= addHOME(oldPath);
+		homeflag =1;
+		printf("new adjusted home path is %s\n",oldPath);
+		}
+	if(homeflag ==0)
+		{
+		char** pathArr;		//strarr to hold path 
+		pathArr= strArr(oldPath,pathArr,'/');	//put strarr in pathArr
+		int i =0;
+		while(pathArr[i] != NULL)		//goes to each string fixes if . or ..
+			{	
+			printf("%s is getting checked for . and ..",oldPath);
+			if(strcmp(pathArr[i],".") ==0)
+				{
+				pathArr[i] = getdir(pathArr[i]); 
+				printf("abs got %s\n",pathArr[i]);	
+				}
+			if(strcmp(pathArr[i],"..")== 0)
+				pathArr[i] = getparent(pathArr[i]); 
+			i++;
+			}
+		printf("out of absolute change while loop\n");
+		i= 0;
+		int total = 0;
+		while(pathArr[i] != NULL)
+			{
+			total = total + strlen(pathArr[i]);
+			i++;
+			}
+		printf("total size to allocate is %d\n",total);
+		temp = (char*)calloc(total +1,sizeof(char));
+		i = 0;
+		strcpy(temp,pathArr[i]);
+		i++;
+		while(pathArr[i] != NULL)
+			{
+			strcat(temp,"/");
+			strcat(temp,pathArr[i]);
+		
+			i++;
+			}
+		temp[total+1] = '\0';
+		printf("new abs path is %s\n",temp);
+		freestrArr(pathArr);
+		free(oldPath);
+	
+		return temp;
+		}
+	else
+		return oldPath;
 	}
-	else if(strcmp(args[i], "cd") == 0){
-		return 2;
+char **strArr(char *path, char** strarr, char del)
+	{
+	//takes in a string and a string array and returns a string array filled with the paths of value
+	int i=0;		//for loop
+	int count = 0;		//amount of array pointers to allocate
+	while(path[i] != '\0')
+		{
+		if(path[i] ==del)
+			count++;
+		i++;
+		}
+	count++;//last one for null character
+	printf("count is %d\n",count);
+	strarr = (char**)calloc(count+1,sizeof(char*));//count plus 1 to allocate for null pointer in last string pointer
+
+	for(i =0;i < count;i++)	//allocating space for each string
+		strarr[i] = (char*)calloc(strlen(path),sizeof(char));//max size will be path
+	printf("%d strings allocated\n",count);
+	strarr[i]= NULL;	//last string points to null
+	int j = 0; //which string to put info in
+	int k = 0; //how far in string you are
+	for(i = 0;i<strlen(path);i++)
+		{
+		if(path[i] != del)
+			{
+			strarr[j][k]= path[i];
+			k++;//progress through each string
+			}
+		else 
+			{
+			strarr[j][k] = '\0';//end that string
+			j++;			//go to next
+			k = 0;			//start at bottome of next
+			}
+		}
+	strarr[j][k] = '\0';//final null character
+	//array is populated
+	printf("array values for %s are:\n",path);
+	for(i = 0;i<count;i++)
+		printf("%s ",strarr[i]);
+
+	return strarr;		
 	}
-	else if(strcmp(args[i], "exit") == 0 || strcmp(args[i], "echo") == 0 || strcmp(args[i], "io") == 0){
-		return 3;
+
+void freestrArr(char **strarr)
+	{
+	int i = 0;
+	while(strarr[i] != NULL)
+		{
+		free(strarr[i]);
+		i++;
+		}
+	free(strarr[i]);	//free last
+	free(strarr);
 	}
-	else{
+
+int exists(char* path)
+	{	
+	if( access( path, F_OK ) != -1 ) 
+		{
 		return 1;
+		} 	
+	else 
+		{
+		return 0;
+		}
+
+
 	}
-}
 
-char *expand_path(char *path, int cmd_p){
-	//returns expanded argument, does nothing in most cases (determined by is_command)
-	char *userPath;
-	char *USER;
-	char *currentPath;
-	char *homePath;
-	char *newPath;
-	homePath = getenv("HOME");
-	USER = getenv("USER");
-	userPath = "/user/";
+char* addHOME(char* oldPath)
+	{
+	char* temp;
+	char* HOME = getenv("HOME");
+	temp = (char*)calloc(strlen(HOME)+strlen(oldPath)+1,sizeof(char));
+	strcpy(temp,HOME);
+	remFirst(oldPath);
+	strcat(temp,oldPath);
+	free(oldPath);
+	return temp;
 
-	int argLen = strlen(path);
-
-	char *path1;
-	char *path2;
-	char *path3;
-	char *path4;
-	char *path5;
-
-	switch(cmd_p){
-		case 0:
-			//arguments expand if they are a file
-			//are f
-			if(expand(path) == 1)
-                		strcpy(path,expand_arg(path));
-			else
-                		printf("does not need to be expanded\n");
-			
-			break;
-		case 1:
-			//external commands must be expanded
-			userPath = malloc(strlen(userPath) + strlen(USER) + 1);
-			userPath = strcat(userPath, USER);
-			userPath = malloc(5 + 1);
-			userPath = strcat(userPath, "/bin/");
-
-			homePath = malloc(strlen(homePath) + 9 + 1);
-			homePath = strcat(homePath, "/bin/git/");
-
-			path1 = malloc(strlen(homePath) + argLen + 1);
-			path2 = malloc(25 + argLen + 1);
-			path3 = malloc(5 + argLen + 1);
-			path4 = malloc(9 + argLen + 1);
-			path5 = malloc(strlen(userPath) + argLen + 1);
-			strcpy(path1, homePath);
-			path1 = strcat(path1, path);
-			strcpy(path2, "/usr/local/bin/");
-			path2 = strcat(path2, path);
-			strcpy(path3, "/bin/");
-			path3 = strcat(path3, path);
-			strcpy(path4, "/usr/bin/");
-			path4 = strcat(path4, path);
-			strcpy(path5, userPath);
-			path5 = strcat(path5, path);
-			
-
-			if(access(path1, F_OK) == 0){
-				newPath = malloc(strlen(path1) + 1);
-				strcpy(newPath, path1);
-				return newPath;
-			}
-			else if(access(path2, F_OK) == 0){
-				newPath = malloc(strlen(path2) + 1);
-				strcpy(newPath, path2);
-				return newPath;
-			}
-			else if(access(path3, F_OK) == 0){
-				newPath = malloc(strlen(path3) + 1);
-				strcpy(newPath, path3);
-				return newPath;
-			}
-			else if(access(path4, F_OK) == 0){
-				newPath = malloc(strlen(path4) + 1);
-				strcpy(newPath, path4);
-				return newPath;
-			}
-			else if(access(path5, F_OK) == 0){
-				newPath = malloc(strlen(path5) + 1);
-				strcpy(newPath, path5);
-				return newPath;
-			}
-			else{
-				printf("ERROR: %s is not a valid command.\n", path);
-				return path;
-			}
-			break;
-		case 2:
-			//cd is the only exception to the rule with built-in commands
-			currentPath = getenv("PWD");
-			printf("You typed cd!\n");
-				return path;
-			
-			break;
-		case 3:
-			if(strcmp(path, "exit") == 0){
-				printf("Exiting...\n");
-				exit(777);
-			}
-			break;
 	}
-}
 
-int expand(char* var)
-        {
-        if(var[0] == '/' || var[0] == '~' || var[0] == '.')
-                return 1;
-        else
-                return 0;
-        }
+void remFirst(char* old)
+	{
+	int i=0;
+	while(old[i] != '\0')
+		{	
+		old[i]=old[i+1];
+		i++;
+		}
+	}
 
-char* expand_arg(char* str)
-        {
-        char* strm1 = str + 1;          //strings that are missing first and second characte$
-        char* strm2 = str + 2;
-        char *myPWD = getenv("PWD");
-        char *myHOME = getenv("HOME");
-        //getting path to directory above
-        int end = strlen(myPWD)-1;      //finding end of myPWD used for getting .. later
-        int constend = end;
-        char check;
-        int howfar = 0;
-        while (check != '/')            //finds end of myPWD (strlen was giving me the wrong$
-                {
-                check = myPWD[end];
-                end--;
-                howfar++;
-                }
-        int where = constend-howfar+1;  //error checking
-        if(str[0] == '/'){}
-                //this is a root
-        else if(str[0] == '.' && str[1] != '.')
-                {
-                //relative to current
-                strcat(myPWD,strm1);
-                strcpy(str,myPWD);
-                }
-        else if(str[0] == '.' && str[1] == '.')
-                {
-                //relative to one behind
-                char temp[255];
-                int i;
-                for( i = 0; i < where; i++)//copies myPWD without last directory
-                        {
-                        temp[i] = myPWD[i];
-                        }
-		temp[where] = '\0';
-                strcat(temp,strm2);
-                strcpy(str,temp);
-                }
-        else if(str[0] == '~')
-                {
-                //relative to home
-                strcat(myHOME,strm1);
-                strcpy(str,myHOME);
-                }
-        else
-                {
-                //relative to current
-                strcat(myPWD,"/");
-                strcat(myPWD,str);
-                strcpy(str,myPWD);
-                }
-        printf("%s\n", str);
-        return str;
-        }
+char* catPaths(char* first, char* second)
+	{
+	char *temp;
+	temp = (char*)calloc(strlen(first)+strlen(second)+1,sizeof(char));
+	strcpy(temp,first);
+	strcat(temp, second);
+	free(first);
+	return temp;
+	}
 
+char* getdir(char* dir)//passes in . and returns directory
+	{
+	char* PWD;
+	PWD = (char*)calloc(strlen(getenv("PWD"))+1,sizeof(char));	//gets Path to working directory
+	strcpy(PWD,getenv("PWD"));
+	free(dir);
+	return PWD;
+
+
+//old code that just got the directory so much work for nothing :(
+/*
+	char** PWDarr;			//holds string of strings
+	remFirst(PWD);
+	PWDarr = strArr(PWD,PWDarr,'/');
+	int length = strarrlength(PWDarr);
+	printf("strings in strarg is %d\n",length);
+	printf("value in last is %s\n",PWDarr[length-1]);
+	temp = PWDarr[length-1];	//gets last
+	PWDarr[length-1] = NULL;	//negates old valuse
+	
+	free(PWD);
+	free(dir);			// frees .
+	freestrArr(PWDarr);
+	printf("getdir is returning %s",temp);
+	return temp;			//returns directory
+*/	
+	}
+
+char* getparent(char* dir)//passes in . and returns directory
+	{
+	char* temp;
+	char* PWD ;	//gets Path to working directory
+	PWD = (char*)calloc(strlen(getenv("PWD"))+1,sizeof(char));	//gets Path to working directory
+	strcpy(PWD,getenv("PWD"));	
+	int i = strlen(PWD)-1;
+	while(PWD[i] != '/')
+		{
+		i--;
+		}
+	PWD[i] = '\0';
+	free(dir);
+	return PWD;	
+	}
+
+int strarrlength(char** strarr)
+	{
+	int i=0;
+	while(strarr[i] != NULL)
+		i++;
+	return i;
+	}
