@@ -28,6 +28,7 @@ char* getdir(char* dir);//passes in . and returns directory
 char* getparent(char* dir);//passes in .. and returns directory
 int strarrlength(char** strarr);//returns number of strings in a 2d array
 void my_execute(char **cmd); //executes 
+int contchar(char** instr, int numTokens, char cont);
 
 
 int main( int argc, char *argv[] )
@@ -88,23 +89,40 @@ int main( int argc, char *argv[] )
 		//Resolve paths and execute here
 		printTokens(bucket, numI);
 		res_loop(bucket, numI);
+//execution
 		if(strcmp(bucket[0],"exit")==0)
 			{
 			printf("Exiting...\n");
 			int i;
-			for(i = 0; i < numI; i++)
-				free(bucket[i]);
+//			for(i = 0; i < numI; i++)
+//				free(bucket[i]);
 			free(bucket);
 			return 0;
 			}
 
 		else if(strcmp(bucket[0],"cd")==0)
 			{
+			if(exists(bucket[1])==1)
+				{
+				chdir(bucket[1]);
+				setenv("PWD",bucket[1],1);
+				}
+			else
+				printf("invalid location\n");
+			}
+		//else if to detect < or > if it does do io redirection
+		else if(contchar(bucket,numI,'<'))
+			{
+			printf("contanis </n");
 			}
 		else
 			my_execute(bucket); 
 
 		printTokens(bucket, numI);		
+//		int i;
+//		for(i = 0; i < numI; i++)
+//			free(bucket[i]);
+		free(bucket);
 	}	//until "exit" is read in
 
 	return 777;	//Jackpot bb
@@ -275,9 +293,9 @@ char **strArr(char *path, char** strarr, char del)
 		}
 	strarr[j][k] = '\0';//final null character
 	//array is populated
-	printf("array values for %s are:\n",path);
-	for(i = 0;i<count;i++)
-		printf("%s ",strarr[i]);
+//	printf("array values for %s are:\n",path);
+//	for(i = 0;i<count;i++)
+//		printf("%s ",strarr[i]);
 
 	return strarr;		
 	}
@@ -413,3 +431,15 @@ void my_execute(char **cmd)
 		waitpid(pid, &status, 0);
 		}
 	}
+int contchar(char** instr, int numTokens, char cont)
+        {
+        int check = 0;
+        int i;
+        for(i = 0; i < numTokens; i++)
+                {
+                if(instr[i][0] == cont)
+                        check = i;
+                }
+        return check;
+        }
+
