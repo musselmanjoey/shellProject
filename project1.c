@@ -123,6 +123,7 @@ int main( int argc, char *argv[] )
 //		for(i = 0; i < numI; i++)
 //			free(bucket[i]);
 		free(bucket);
+
 	}	//until "exit" is read in
 
 	return 777;	//Jackpot bb
