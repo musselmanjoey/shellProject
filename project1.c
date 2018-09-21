@@ -100,7 +100,6 @@ int main( int argc, char *argv[] )
 
 		else if(strcmp(bucket[0],"cd")==0)
 			{
-			chdir(bucket[1]);
 			}
 		else
 			my_execute(bucket); 
@@ -276,9 +275,9 @@ char **strArr(char *path, char** strarr, char del)
 		}
 	strarr[j][k] = '\0';//final null character
 	//array is populated
-//	printf("array values for %s are:\n",path);
-//	for(i = 0;i<count;i++)
-//		printf("%s ",strarr[i]);
+	printf("array values for %s are:\n",path);
+	for(i = 0;i<count;i++)
+		printf("%s ",strarr[i]);
 
 	return strarr;		
 	}
