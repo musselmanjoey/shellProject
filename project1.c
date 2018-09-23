@@ -30,7 +30,7 @@ int strarrlength(char** strarr);//returns number of strings in a 2d array
 void my_execute(char **cmd); //executes 
 int contchar(char** instr, int numTokens, char cont);
 char *newinstr(char **bucket, int numTokens);
-
+void echo(char *args);
 
 int main( int argc, char *argv[] )
         {
@@ -111,6 +111,59 @@ int main( int argc, char *argv[] )
 			else
 				printf("invalid location\n");
 			}
+		else if(strcmp(bucket[0], "echo") == 0){
+			printf("You echoed!\n");
+			int i;
+			for(i = 1; i < numI; i++){
+				echo(bucket[i]);
+				printf(" ");
+			}
+			printf("\n");
+		}
+		//else if to detect | for piping
+		else if(contchar(bucket,numI,'|') > 0)
+		{
+			if(strcmp(bucket[0], "|") == 0)
+			{
+				printf("Invalid input\n");
+			}
+			else if((bucket[1], "|") == 0 && numI == 2)
+			{
+				printf("Not enough arguments\n");
+			}
+			else
+			{
+				int fd1[2];
+				int fd2[2];
+				char *inputStream;
+				char *outputStream;
+				pid_t pid = fork();
+
+				if(pipe(fd1) == -1 || pipe(fd2) == -1)
+					printf("Piping failed!\n");
+				else{
+					if(pid == 0){
+						//Childish things
+						close(fd1[1]);
+
+						char str[150];
+						read(fd1[0], str, 150);
+
+						int num = strlen(str);
+						int i;
+						for(i = 0; i < strlen(bucket[0]); i++){
+							str[num++] = bucket
+						}
+					}
+					else if(pid < 0)
+						printf("Forking failed!\n");
+					else{
+						//Parental things
+						
+					}
+				}
+			}
+		}
 		//else if to detect < or > if it does do io redirection
 		else if(contchar(bucket,numI,'<') > 0 || contchar(bucket,numI,'>') > 0)
 			{
@@ -189,6 +242,7 @@ int main( int argc, char *argv[] )
 
 					freestrArr(arr);
 					free(path);
+					exit(0);
 				}
 				else if((pid) < 0)
 					printf("fork() failed!\n");
@@ -277,6 +331,23 @@ char** res_loop(char **args, int numtokes)
 		args[0] = PATHres(args[0]);
 		}
 	}
+
+void echo(char *args){
+	if(args[0] != '$'){
+		printf("%s", args);
+	}
+	else{
+		char *envVar;
+		remFirst(args);
+		envVar = getenv(args);
+		if(envVar == NULL){
+			printf("[Undefined] ");
+		}
+		else{
+			printf("%s ", envVar);
+		}
+	}
+}
 
 char* PATHres(char* oldPath)
 	{
